@@ -155,6 +155,14 @@ body > * {
   accent-color: var(--signal-strong);
 }
 
+.field-hint {
+  font-size: 0.78rem;
+  font-weight: 450;
+  line-height: 1.4;
+  color: var(--muted);
+  opacity: 0.9;
+}
+
 .segment {
   flex: 1;
   border: 0;

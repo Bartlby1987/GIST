@@ -84,32 +84,49 @@ export function buildInsights(
   }
 
   const youPage = pageById.get(you.id);
+  const queryTokens = new Set(tokenize(query));
+  const hasQuery = queryTokens.size > 0;
+
   if (youPage && competitors.length) {
     const youTerms = new Set(topTerms(youPage.text, 40));
     const shared: string[] = [];
-    const missingTopics: Array<{ text: string; meta: string }> = [];
+    const missingRaw: Array<{ text: string; meta: string; queryHit: number }> = [];
 
     for (const c of competitors) {
       const page = pageById.get(c.id);
       if (!page) continue;
       for (const h of page.headings.slice(0, 8)) {
         const tokens = tokenize(h);
-        const covered = tokens.length
-          ? tokens.filter((t) => youTerms.has(t)).length / tokens.length
+        if (tokens.length === 0) continue;
+        const covered = tokens.filter((t) => youTerms.has(t)).length / tokens.length;
+        if (covered >= 0.35) continue;
+        const already = missingRaw.some(
+          (item) => item.text.toLowerCase() === h.toLowerCase(),
+        );
+        if (already) continue;
+        const queryHit = hasQuery
+          ? tokens.filter((t) => queryTokens.has(t)).length / tokens.length
           : 0;
-        if (covered < 0.35 && missingTopics.length < 8) {
-          const already = missingTopics.some(
-            (item) => item.text.toLowerCase() === h.toLowerCase(),
-          );
-          if (!already) {
-            missingTopics.push({ text: h, meta: c.label });
-          }
-        }
+        missingRaw.push({ text: h, meta: c.label, queryHit });
       }
       for (const t of topTerms(page.text, 10)) {
         if (youTerms.has(t) && !shared.includes(t) && shared.length < 8) shared.push(t);
       }
     }
+
+    // С запросом — сначала подзаголовки, близкие к запросу; без запроса — как есть
+    const missingTopics = (
+      hasQuery
+        ? [...missingRaw]
+            .sort((a, b) => b.queryHit - a.queryHit)
+            .filter((item, idx) => item.queryHit > 0 || idx < 3)
+        : missingRaw
+    )
+      .slice(0, 8)
+      .map(({ text, meta, queryHit }) => ({
+        text,
+        meta: hasQuery && queryHit > 0 ? `${meta} · к запросу` : meta,
+      }));
 
     if (shared.length) {
       insights.push({
@@ -123,8 +140,10 @@ export function buildInsights(
     if (missingTopics.length) {
       insights.push({
         type: "missing",
-        title: "Темы конкурентов, которые у вас слабо покрыты",
-        detail: `Нашли ${missingTopics.length} тем(ы), которые есть у конкурентов, а у вас почти нет.`,
+        title: "Подзаголовки у конкурентов, которых у вас почти нет",
+        detail: hasQuery
+          ? `Это разделы чужих статей, которых у вас почти нет. Связь с запросом «${query}»: берите только то, что помогает лучше ответить на него (факты, сравнение, сценарий). Не копируйте весь список — иначе снова станете похожи на конкурента.`
+          : "Это разделы чужих статей (H2/H3), которых у вас почти нет. Добавляйте только если они усиливают ответ читателю. Без поискового запроса сверху сложно понять, какие из них важны — укажите запрос.",
         items: missingTopics,
       });
     }

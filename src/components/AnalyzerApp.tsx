@@ -104,12 +104,15 @@ export function AnalyzerApp() {
         </div>
 
         <label className="field">
-          <span>О чём статья (тема)</span>
+          <span>Поисковый запрос</span>
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="например: лучшие CRM для малого бизнеса"
           />
+          <span className="field-hint">
+            По нему считаем полезность и отбираем, какие «дыры» у конкурентов реально важны.
+          </span>
         </label>
 
         <div className="flex gap-2 rounded-full bg-[var(--mist)] p-1">
@@ -378,7 +381,11 @@ export function AnalyzerApp() {
                 <div className="panel h-full p-5">
                   <p className="eyebrow">По шагам</p>
                   <h3 className="font-display text-xl text-[var(--ink)]">Что улучшить</h3>
-                  <p className="plain-hint">Читайте сверху вниз — это готовые подсказки.</p>
+                  <p className="plain-hint">
+                    Список «дыр» — это чужие подзаголовки, которых у вас почти нет. Добавляйте их
+                    в статью только если они помогают ответить на ваш поисковый запрос сверху — не
+                    ради «закрыть всё как у конкурента».
+                  </p>
                   <ul className="mt-3 space-y-3">
                     {result.insights.map((ins) => (
                       <li key={`${ins.type}-${ins.title}`} className="insight" data-type={ins.type}>
