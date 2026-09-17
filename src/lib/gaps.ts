@@ -86,8 +86,8 @@ export function buildInsights(
   const youPage = pageById.get(you.id);
   if (youPage && competitors.length) {
     const youTerms = new Set(topTerms(youPage.text, 40));
-    const missingHeadings: string[] = [];
     const shared: string[] = [];
+    const missingTopics: Array<{ text: string; meta: string }> = [];
 
     for (const c of competitors) {
       const page = pageById.get(c.id);
@@ -97,8 +97,13 @@ export function buildInsights(
         const covered = tokens.length
           ? tokens.filter((t) => youTerms.has(t)).length / tokens.length
           : 0;
-        if (covered < 0.35 && missingHeadings.length < 6) {
-          missingHeadings.push(`«${h}» — есть у ${c.label}`);
+        if (covered < 0.35 && missingTopics.length < 8) {
+          const already = missingTopics.some(
+            (item) => item.text.toLowerCase() === h.toLowerCase(),
+          );
+          if (!already) {
+            missingTopics.push({ text: h, meta: c.label });
+          }
         }
       }
       for (const t of topTerms(page.text, 10)) {
@@ -111,14 +116,16 @@ export function buildInsights(
         type: "overlap",
         title: "Общие частые темы с конкурентами",
         detail: shared.join(", "),
+        items: shared.map((text) => ({ text })),
       });
     }
 
-    if (missingHeadings.length) {
+    if (missingTopics.length) {
       insights.push({
         type: "missing",
         title: "Темы конкурентов, которые у вас слабо покрыты",
-        detail: missingHeadings.join(" · "),
+        detail: `Нашли ${missingTopics.length} тем(ы), которые есть у конкурентов, а у вас почти нет.`,
+        items: missingTopics,
       });
     }
 
@@ -133,7 +140,8 @@ export function buildInsights(
       insights.push({
         type: "strength",
         title: "Ваши относительно уникальные слова",
-        detail: youUnique.slice(0, 8).join(", "),
+        detail: "Эти частые слова сильнее выражены у вас, чем у конкурентов.",
+        items: youUnique.slice(0, 8).map((text) => ({ text })),
       });
     }
   }

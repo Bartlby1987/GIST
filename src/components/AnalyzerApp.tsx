@@ -383,7 +383,24 @@ export function AnalyzerApp() {
                     {result.insights.map((ins) => (
                       <li key={`${ins.type}-${ins.title}`} className="insight" data-type={ins.type}>
                         <strong>{ins.title}</strong>
-                        <p>{ins.detail}</p>
+                        {ins.detail && <p>{ins.detail}</p>}
+                        {ins.items && ins.items.length > 0 && (
+                          <ul className="insight-list">
+                            {ins.items.map((item, idx) => (
+                              <li key={`${item.text}-${idx}`}>
+                                <span className="insight-list-mark" aria-hidden>
+                                  {idx + 1}
+                                </span>
+                                <span className="insight-list-body">
+                                  <span className="insight-list-text">{item.text}</span>
+                                  {item.meta && (
+                                    <span className="insight-list-meta">у {item.meta}</span>
+                                  )}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
                       </li>
                     ))}
                   </ul>

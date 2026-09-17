@@ -50,6 +50,8 @@ export type GapInsight = {
   type: "overlap" | "missing" | "strength" | "action";
   title: string;
   detail: string;
+  /** Структурированный список для понятного UI (темы, пункты) */
+  items?: Array<{ text: string; meta?: string }>;
 };
 
 export type AnalyzeResult = {

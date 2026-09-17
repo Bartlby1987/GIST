@@ -233,6 +233,79 @@ body > * {
   line-height: 1.45;
 }
 
+.insight-list {
+  list-style: none;
+  margin: 0.7rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.insight-list > li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  border: 1px solid rgba(2, 132, 199, 0.14);
+  background: rgba(255, 255, 255, 0.72);
+  border-radius: 0.85rem;
+  padding: 0.55rem 0.7rem;
+}
+
+.insight[data-type="overlap"] .insight-list > li {
+  border-color: rgba(234, 88, 12, 0.16);
+}
+
+.insight[data-type="strength"] .insight-list > li {
+  border-color: rgba(13, 148, 136, 0.16);
+}
+
+.insight-list-mark {
+  flex: 0 0 auto;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono-jb), ui-monospace, monospace;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #0369a1;
+  background: rgba(2, 132, 199, 0.12);
+  margin-top: 0.1rem;
+}
+
+.insight[data-type="overlap"] .insight-list-mark {
+  color: #c2410c;
+  background: rgba(234, 88, 12, 0.12);
+}
+
+.insight[data-type="strength"] .insight-list-mark {
+  color: #0f766e;
+  background: rgba(13, 148, 136, 0.12);
+}
+
+.insight-list-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.insight-list-text {
+  color: var(--ink);
+  font-size: 0.9rem;
+  line-height: 1.35;
+  font-weight: 550;
+}
+
+.insight-list-meta {
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+
 .source-row {
   width: 100%;
   text-align: left;
