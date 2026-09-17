@@ -19,11 +19,6 @@ export function GistMap({ docs, activeId, onSelect }: Props) {
 
   return (
     <div className="map-shell relative overflow-hidden rounded-[1.5rem]">
-      <div className="absolute left-4 top-4 z-10 max-w-sm rounded-xl bg-black/35 px-3 py-2 text-xs leading-relaxed text-teal-50 backdrop-blur-sm">
-        Красная точка — вы. Круг рисуется по реальной зоне GIST: он покрывает статьи, которые этот
-        источник выбил как слишком похожие.
-      </div>
-
       <svg
         viewBox={`0 0 ${width} ${height}`}
         className="h-auto w-full"

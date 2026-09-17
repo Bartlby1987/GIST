@@ -342,8 +342,8 @@ export function AnalyzerApp() {
               <div className="space-y-4">
                 <div className="explain-box">
                   <p className="plain-hint !mt-0">
-                    Точки — статьи. Чем ближе друг к другу, тем похожее смысл. Круг вокруг точки —
-                    «чужая зона»: кто попал внутрь, того могут не взять как повтор.
+                    Красная точка — вы. Чем ближе точки, тем похожее смысл. Круг — реальная зона
+                    GIST: он покрывает статьи, которые этот источник выбил как слишком похожие.
                   </p>
                 </div>
                 <GistMap
@@ -374,8 +374,8 @@ export function AnalyzerApp() {
             )}
 
             {tab === "sources" && (
-              <div className="grid gap-4 lg:grid-cols-2">
-                <div className="panel p-5">
+              <div className="grid items-stretch gap-4 lg:grid-cols-2">
+                <div className="panel h-full p-5">
                   <p className="eyebrow">По шагам</p>
                   <h3 className="font-display text-xl text-[var(--ink)]">Что улучшить</h3>
                   <p className="plain-hint">Читайте сверху вниз — это готовые подсказки.</p>
@@ -406,10 +406,10 @@ export function AnalyzerApp() {
                   </ul>
                 </div>
 
-                <div className="panel p-5">
+                <div className="panel flex h-full min-h-[70vh] flex-col p-5">
                   <p className="eyebrow">Список</p>
                   <h3 className="font-display text-xl text-[var(--ink)]">Все статьи</h3>
-                  <ul className="mt-3 max-h-[560px] space-y-2 overflow-auto pr-1">
+                  <ul className="mt-3 min-h-0 flex-1 space-y-2 overflow-auto pr-1">
                     {result.docs.map((d) => {
                       const isYou = d.role === "you" || d.role === "draft";
                       return (
