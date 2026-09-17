@@ -445,8 +445,8 @@ export function AnalyzerApp() {
                   <p className="eyebrow">Список</p>
                   <h3 className="font-display text-xl text-[var(--ink)]">Все загруженные</h3>
                   <p className="plain-hint">
-                    Это все URL, которые вы вставили — запрос их не убирает. Меняется порядок и
-                    бейджи «в списке #…» / «как копия»: выше те, кто лучше закрывает запрос.
+                    Здесь все загруженные статьи. Состав списка — от ваших ссылок. Порядок, польза,
+                    «к запросу» и бейджи #1/#2 — от поискового запроса после «Сравнить».
                   </p>
                   <ul className="mt-3 min-h-0 flex-1 space-y-2 overflow-auto pr-1">
                     {[...result.docs]
