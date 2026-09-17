@@ -77,7 +77,12 @@ export function computeQueryRelevance(
  * Полезность (utility) — без заглушек.
  * С запросом главная часть — попадание в тему; без запроса — длина/плотность/структура.
  */
-export function computeUtility(text: string, query: string, headings: string[]): number {
+export function computeUtility(
+  text: string,
+  query: string,
+  headings: string[],
+  title = "",
+): number {
   const words = tokenize(text);
   if (words.length === 0) return 0;
 
@@ -85,7 +90,7 @@ export function computeUtility(text: string, query: string, headings: string[]):
   const lengthScore = clamp01(Math.log10(words.length + 1) / Math.log10(3000));
   const density = clamp01(unique.size / Math.max(words.length, 1));
   const headingScore = clamp01(headings.length / 12);
-  const queryScore = computeQueryRelevance(text, query, headings);
+  const queryScore = computeQueryRelevance(text, query, headings, title);
 
   if (queryScore == null) {
     const raw = 0.48 * lengthScore + 0.32 * density + 0.2 * headingScore;
@@ -94,7 +99,7 @@ export function computeUtility(text: string, query: string, headings: string[]):
 
   // Запрос — основной сигнал: кто лучше закрывает тему, тот выше в GIST
   const raw =
-    0.48 * queryScore + 0.26 * lengthScore + 0.14 * density + 0.12 * headingScore;
+    0.62 * queryScore + 0.2 * lengthScore + 0.1 * density + 0.08 * headingScore;
 
   return Math.round(clamp01(raw) * 1000) / 1000;
 }

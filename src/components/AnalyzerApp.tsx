@@ -54,6 +54,8 @@ export function AnalyzerApp() {
     [result, activeId],
   );
 
+  const queryStale = Boolean(result && query.trim() !== result.query.trim());
+
   function runAnalyze() {
     setError(null);
     const competitorUrls = competitorText
@@ -61,13 +63,15 @@ export function AnalyzerApp() {
       .map((s) => s.trim())
       .filter(Boolean);
 
+    const queryNow = query.trim();
+
     startTransition(async () => {
       try {
         const res = await fetch("/api/analyze", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            query,
+            query: queryNow,
             yourUrl: mode === "url" ? yourUrl : undefined,
             yourText: mode === "draft" ? yourText : undefined,
             competitorUrls,
@@ -111,8 +115,8 @@ export function AnalyzerApp() {
             placeholder="например: лучшие CRM для малого бизнеса"
           />
           <span className="field-hint">
-            Меняет полезность и порядок GIST (кто #1/#2). Сам набор ссылок справа не фильтрует —
-            там все загруженные URL.
+            Без кнопки «Сравнить» ничего не пересчитается. Запрос решает, кто полезнее по теме и
+            кто #1/#2.
           </span>
         </label>
 
@@ -213,8 +217,18 @@ export function AnalyzerApp() {
         </details>
 
         <button type="button" className="cta w-full" disabled={pending} onClick={runAnalyze}>
-          {pending ? "Сравниваем статьи…" : "Сравнить"}
+          {pending
+            ? "Сравниваем статьи…"
+            : queryStale
+              ? "Пересчитать с новым запросом"
+              : "Сравнить"}
         </button>
+        {queryStale && (
+          <p className="text-sm font-medium leading-snug text-[#c2410c]">
+            Запрос изменили, а результат ещё старый (был: «{result?.query || "—"}»). Нажмите кнопку
+            выше — иначе цифры не сдвинутся.
+          </p>
+        )}
 
         {error && (
           <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -263,7 +277,21 @@ export function AnalyzerApp() {
 
         {result && !pending && (
           <>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div
+              className={`explain-box ${queryStale ? "opacity-60" : ""}`}
+            >
+              <p className="eyebrow">Считалось для запроса</p>
+              <p className="font-display text-xl text-[var(--ink)]">
+                {result.query.trim() ? result.query : "запрос не указан"}
+              </p>
+              {queryStale && (
+                <p className="mt-2 text-sm text-[#c2410c]">
+                  Сейчас в поле слева другой текст — это ещё не применено.
+                </p>
+              )}
+            </div>
+
+            <div className={`grid gap-3 sm:grid-cols-2 xl:grid-cols-4 ${queryStale ? "opacity-60" : ""}`}>
               <Stat
                 label="Короткий ответ"
                 value={

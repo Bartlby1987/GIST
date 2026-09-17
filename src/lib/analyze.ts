@@ -18,6 +18,26 @@ import type {
   ScrapedPage,
 } from "./types";
 
+type CachedFetch = {
+  at: number;
+  page: Awaited<ReturnType<typeof fetchPageText>>;
+};
+
+/** Кэш страниц: смена только запроса не должна ждать повторный scrape */
+const PAGE_CACHE = new Map<string, CachedFetch>();
+const PAGE_CACHE_TTL_MS = 15 * 60 * 1000;
+
+async function fetchPageCached(url: string) {
+  const key = url.trim();
+  const hit = PAGE_CACHE.get(key);
+  if (hit && Date.now() - hit.at < PAGE_CACHE_TTL_MS) {
+    return hit.page;
+  }
+  const page = await fetchPageText(key);
+  PAGE_CACHE.set(key, { at: Date.now(), page });
+  return page;
+}
+
 function hostLabel(url: string): string {
   try {
     return new URL(url).hostname.replace(/^www\./, "");
@@ -65,7 +85,7 @@ async function loadSources(req: AnalyzeRequest): Promise<ScrapedPage[]> {
     tasks.push(
       (async () => {
         try {
-          const page = await fetchPageText(yourUrl);
+          const page = await fetchPageCached(yourUrl);
           pages.push({
             id: "you",
             role: "you",
@@ -113,7 +133,7 @@ async function loadSources(req: AnalyzeRequest): Promise<ScrapedPage[]> {
       (async () => {
         const id = `comp-${idx}`;
         try {
-          const page = await fetchPageText(url);
+          const page = await fetchPageCached(url);
           pages.push({
             id,
             role: "competitor",
@@ -171,7 +191,9 @@ export async function analyzeContent(req: AnalyzeRequest): Promise<AnalyzeResult
   const suggestedRadius = suggestRadiusFromDistances(pairDistances);
   const radiusMode = manualRadius == null ? "auto" : "manual";
 
-  const utilities = usable.map((p) => computeUtility(p.text, query, p.headings));
+  const utilities = usable.map((p) =>
+    computeUtility(p.text, query, p.headings, p.title),
+  );
   const queryScores = usable.map((p) =>
     computeQueryRelevance(p.text, query, p.headings, p.title),
   );
