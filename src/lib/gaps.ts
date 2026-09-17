@@ -10,6 +10,50 @@ export function topTerms(text: string, limit = 12): string[] {
     .map(([t]) => t);
 }
 
+/** Грубый стемм: уникальность ≈ уникальности, контента ≈ контент */
+function tokensRelated(a: string, b: string): boolean {
+  if (a === b) return true;
+  const minLen = Math.min(a.length, b.length);
+  if (minLen < 4) return false;
+  const n = Math.min(6, minLen);
+  return a.slice(0, n) === b.slice(0, n);
+}
+
+function queryHitsInHeading(headingTokens: string[], queryTokens: string[]): number {
+  let hits = 0;
+  for (const q of queryTokens) {
+    if (headingTokens.some((h) => tokensRelated(q, h))) hits += 1;
+  }
+  return hits;
+}
+
+/**
+ * Раздел относится к запросу только при реальном пересечении.
+ * Одного seo/контент мало, если в запросе есть более точное слово (уникальность и т.п.).
+ */
+export function isHeadingRelevantToQuery(heading: string, query: string): boolean {
+  const queryTokens = tokenize(query);
+  if (queryTokens.length === 0) return false;
+
+  const headingTokens = tokenize(heading);
+  if (headingTokens.length === 0) return false;
+
+  const hits = queryHitsInHeading(headingTokens, queryTokens);
+  if (hits === 0) return false;
+
+  const byLen = [...queryTokens].sort((a, b) => b.length - a.length);
+  const longest = byLen[0]!;
+  const hasLongest = headingTokens.some((h) => tokensRelated(longest, h));
+
+  // Есть «якорное» слово запроса — без него раздел не по теме
+  if (longest.length >= 5) {
+    return hasLongest;
+  }
+
+  // Короткий запрос (crm, api): достаточно любого совпадения
+  return hits >= 1;
+}
+
 /**
  * Доля ваших частых тем, которых нет в топе конкурентов.
  * null — если данных недостаточно (не заглушка).
@@ -84,49 +128,46 @@ export function buildInsights(
   }
 
   const youPage = pageById.get(you.id);
-  const queryTokens = new Set(tokenize(query));
-  const hasQuery = queryTokens.size > 0;
+  const queryTrim = query.trim();
+  const hasQuery = tokenize(queryTrim).length > 0;
 
   if (youPage && competitors.length) {
     const youTerms = new Set(topTerms(youPage.text, 40));
     const shared: string[] = [];
-    const missingRaw: Array<{ text: string; meta: string; queryHit: number }> = [];
+    const missingTopics: Array<{ text: string; meta: string }> = [];
+
+    if (!hasQuery) {
+      insights.push({
+        type: "action",
+        title: "Укажите поисковый запрос",
+        detail:
+          "Без запроса сверху не показываем «дыры»: иначе в список попадут чужие темы не по делу.",
+      });
+    }
 
     for (const c of competitors) {
       const page = pageById.get(c.id);
       if (!page) continue;
-      for (const h of page.headings.slice(0, 8)) {
-        const tokens = tokenize(h);
-        if (tokens.length === 0) continue;
-        const covered = tokens.filter((t) => youTerms.has(t)).length / tokens.length;
-        if (covered >= 0.35) continue;
-        const already = missingRaw.some(
-          (item) => item.text.toLowerCase() === h.toLowerCase(),
-        );
-        if (already) continue;
-        const queryHit = hasQuery
-          ? tokens.filter((t) => queryTokens.has(t)).length / tokens.length
-          : 0;
-        missingRaw.push({ text: h, meta: c.label, queryHit });
+
+      if (hasQuery) {
+        for (const h of page.headings.slice(0, 10)) {
+          if (!isHeadingRelevantToQuery(h, queryTrim)) continue;
+          const tokens = tokenize(h);
+          if (tokens.length === 0) continue;
+          const covered = tokens.filter((t) => youTerms.has(t)).length / tokens.length;
+          if (covered >= 0.35) continue;
+          const already = missingTopics.some(
+            (item) => item.text.toLowerCase() === h.toLowerCase(),
+          );
+          if (already || missingTopics.length >= 8) continue;
+          missingTopics.push({ text: h, meta: c.label });
+        }
       }
+
       for (const t of topTerms(page.text, 10)) {
         if (youTerms.has(t) && !shared.includes(t) && shared.length < 8) shared.push(t);
       }
     }
-
-    // С запросом — сначала подзаголовки, близкие к запросу; без запроса — как есть
-    const missingTopics = (
-      hasQuery
-        ? [...missingRaw]
-            .sort((a, b) => b.queryHit - a.queryHit)
-            .filter((item, idx) => item.queryHit > 0 || idx < 3)
-        : missingRaw
-    )
-      .slice(0, 8)
-      .map(({ text, meta, queryHit }) => ({
-        text,
-        meta: hasQuery && queryHit > 0 ? `${meta} · к запросу` : meta,
-      }));
 
     if (shared.length) {
       insights.push({
@@ -137,14 +178,18 @@ export function buildInsights(
       });
     }
 
-    if (missingTopics.length) {
+    if (hasQuery && missingTopics.length) {
       insights.push({
         type: "missing",
-        title: "Подзаголовки у конкурентов, которых у вас почти нет",
-        detail: hasQuery
-          ? `Это разделы чужих статей, которых у вас почти нет. Связь с запросом «${query}»: берите только то, что помогает лучше ответить на него (факты, сравнение, сценарий). Не копируйте весь список — иначе снова станете похожи на конкурента.`
-          : "Это разделы чужих статей (H2/H3), которых у вас почти нет. Добавляйте только если они усиливают ответ читателю. Без поискового запроса сверху сложно понять, какие из них важны — укажите запрос.",
+        title: "Пробелы по вашему запросу",
+        detail: `Разделы конкурентов про «${queryTrim}», которых у вас почти нет. Имеет смысл добавить, если усилят ответ на запрос — не копируйте чужой план целиком.`,
         items: missingTopics,
+      });
+    } else if (hasQuery) {
+      insights.push({
+        type: "strength",
+        title: "Явных пробелов по запросу не видно",
+        detail: `По заголовкам конкурентов не нашли разделов про «${queryTrim}», которых у вас почти нет. Либо вы уже закрываете тему, либо у конкурентов другие углы.`,
       });
     }
 
