@@ -14,9 +14,68 @@ export type GistSelectionResult = {
   totalUtility: number;
 };
 
+/** Грубый стемм: уникальность ≈ уникальности */
+function tokensRelated(a: string, b: string): boolean {
+  if (a === b) return true;
+  const minLen = Math.min(a.length, b.length);
+  if (minLen < 4) return false;
+  const n = Math.min(6, minLen);
+  return a.slice(0, n) === b.slice(0, n);
+}
+
+/**
+ * Насколько текст бьёт в поисковый запрос (0..1).
+ * Без якорного слова запроса — сильный штраф (статья «не про то»).
+ */
+export function computeQueryRelevance(
+  text: string,
+  query: string,
+  headings: string[] = [],
+  title = "",
+): number | null {
+  const qTokens = tokenize(query);
+  if (qTokens.length === 0) return null;
+
+  const body = tokenize(`${title}\n${headings.join("\n")}\n${text}`);
+  if (body.length === 0) return 0;
+
+  const headingTokens = tokenize(`${title}\n${headings.join("\n")}`);
+  const tf = new Map<string, number>();
+  for (const t of body) tf.set(t, (tf.get(t) ?? 0) + 1);
+
+  let present = 0;
+  let inHeadings = 0;
+  let freqHits = 0;
+  for (const q of qTokens) {
+    let best = 0;
+    for (const [t, c] of tf) {
+      if (tokensRelated(q, t)) best = Math.max(best, c);
+    }
+    if (best > 0) {
+      present += 1;
+      freqHits += Math.min(best, 12);
+    }
+    if (headingTokens.some((h) => tokensRelated(q, h))) inHeadings += 1;
+  }
+
+  const coverage = present / qTokens.length;
+  const headingBoost = inHeadings / qTokens.length;
+  const freqScore = clamp01(freqHits / (qTokens.length * 6));
+
+  const byLen = [...qTokens].sort((a, b) => b.length - a.length);
+  const longest = byLen[0]!;
+  const hasAnchor =
+    longest.length < 5 || body.some((t) => tokensRelated(longest, t));
+
+  let score = 0.5 * coverage + 0.3 * headingBoost + 0.2 * freqScore;
+  if (!hasAnchor) score *= 0.12;
+
+  return Math.round(clamp01(score) * 1000) / 1000;
+}
+
 /**
  * Полезность (utility) — без заглушек.
- * Нормализуем вклады так, чтобы итог был честным 0..1 по данным текста.
+ * С запросом главная часть — попадание в тему; без запроса — длина/плотность/структура.
  */
 export function computeUtility(text: string, query: string, headings: string[]): number {
   const words = tokenize(text);
@@ -26,28 +85,16 @@ export function computeUtility(text: string, query: string, headings: string[]):
   const lengthScore = clamp01(Math.log10(words.length + 1) / Math.log10(3000));
   const density = clamp01(unique.size / Math.max(words.length, 1));
   const headingScore = clamp01(headings.length / 12);
+  const queryScore = computeQueryRelevance(text, query, headings);
 
-  const qTokens = tokenize(query);
-  let queryScore = 0;
-  let hasQuery = false;
-  if (qTokens.length > 0) {
-    hasQuery = true;
-    let hits = 0;
-    for (const t of qTokens) if (unique.has(t)) hits += 1;
-    queryScore = hits / qTokens.length;
+  if (queryScore == null) {
+    const raw = 0.48 * lengthScore + 0.32 * density + 0.2 * headingScore;
+    return Math.round(clamp01(raw) * 1000) / 1000;
   }
 
-  // Если запроса нет — его вес отдаём длине и плотности
-  const wQuery = hasQuery ? 0.28 : 0;
-  const wLength = hasQuery ? 0.34 : 0.48;
-  const wDensity = hasQuery ? 0.22 : 0.32;
-  const wHeadings = hasQuery ? 0.16 : 0.2;
-
+  // Запрос — основной сигнал: кто лучше закрывает тему, тот выше в GIST
   const raw =
-    wLength * lengthScore +
-    wDensity * density +
-    wQuery * queryScore +
-    wHeadings * headingScore;
+    0.48 * queryScore + 0.26 * lengthScore + 0.14 * density + 0.12 * headingScore;
 
   return Math.round(clamp01(raw) * 1000) / 1000;
 }

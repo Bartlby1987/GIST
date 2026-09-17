@@ -226,8 +226,7 @@ export function AnalyticsPanel({ result }: Props) {
           <p className="eyebrow">Сравнение силы</p>
           <h4 className="font-display text-xl text-[var(--ink)]">Чей текст полезнее</h4>
           <p className="plain-hint">
-            Utility в духе GIST: длина, плотность смысла, структура
-            {result.query ? " и попадание в тему" : ""}.
+            Utility в духе GIST: попадание в запрос (если указан), длина, плотность, структура.
           </p>
           <div className="mt-4 space-y-4">
             {utilityBars.map((d) => {

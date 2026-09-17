@@ -111,7 +111,8 @@ export function AnalyzerApp() {
             placeholder="например: лучшие CRM для малого бизнеса"
           />
           <span className="field-hint">
-            По нему считаем полезность и отбираем, какие «дыры» у конкурентов реально важны.
+            Меняет полезность и порядок GIST (кто #1/#2). Сам набор ссылок справа не фильтрует —
+            там все загруженные URL.
           </span>
         </label>
 
@@ -414,9 +415,22 @@ export function AnalyzerApp() {
 
                 <div className="panel flex h-full min-h-[70vh] flex-col p-5">
                   <p className="eyebrow">Список</p>
-                  <h3 className="font-display text-xl text-[var(--ink)]">Все статьи</h3>
+                  <h3 className="font-display text-xl text-[var(--ink)]">Все загруженные</h3>
+                  <p className="plain-hint">
+                    Это все URL, которые вы вставили — запрос их не убирает. Меняется порядок и
+                    бейджи «в списке #…» / «как копия»: выше те, кто лучше закрывает запрос.
+                  </p>
                   <ul className="mt-3 min-h-0 flex-1 space-y-2 overflow-auto pr-1">
-                    {result.docs.map((d) => {
+                    {[...result.docs]
+                      .sort((a, b) => {
+                        if (a.error && !b.error) return 1;
+                        if (!a.error && b.error) return -1;
+                        const ao = a.selectionOrder ?? 999;
+                        const bo = b.selectionOrder ?? 999;
+                        if (ao !== bo) return ao - bo;
+                        return b.utility - a.utility;
+                      })
+                      .map((d) => {
                       const isYou = d.role === "you" || d.role === "draft";
                       return (
                         <li key={d.id}>
@@ -447,6 +461,9 @@ export function AnalyzerApp() {
                             {!d.error && (
                               <p className="mt-1 text-xs text-[var(--muted)]">
                                 польза {Math.round(d.utility * 100)}/100
+                                {d.queryRelevance != null
+                                  ? ` · к запросу ${Math.round(d.queryRelevance * 100)}%`
+                                  : ""}
                                 {d.similarityToYou != null
                                   ? ` · похожесть на вас ${Math.round(d.similarityToYou * 100)}%`
                                   : ""}

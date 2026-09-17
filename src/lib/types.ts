@@ -23,6 +23,8 @@ export type AnalyzedDoc = {
   wordCount: number;
   headings: string[];
   utility: number;
+  /** Попадание в поисковый запрос; null если запрос пустой */
+  queryRelevance: number | null;
   selected: boolean;
   selectionOrder: number | null;
   nearestSelectedId: string | null;

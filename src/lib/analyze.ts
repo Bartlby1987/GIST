@@ -3,6 +3,7 @@ import { buildInsights, computeTopicDistinctiveness } from "./gaps";
 import {
   allPairDistances,
   computeBubbleRadii2D,
+  computeQueryRelevance,
   computeUtility,
   pairwise,
   projectTo2D,
@@ -171,6 +172,9 @@ export async function analyzeContent(req: AnalyzeRequest): Promise<AnalyzeResult
   const radiusMode = manualRadius == null ? "auto" : "manual";
 
   const utilities = usable.map((p) => computeUtility(p.text, query, p.headings));
+  const queryScores = usable.map((p) =>
+    computeQueryRelevance(p.text, query, p.headings, p.title),
+  );
   const ids = usable.map((p) => p.id);
 
   const gist = runGistSelection(ids, utilities, vectors, manualRadius, k);
@@ -198,6 +202,7 @@ export async function analyzeContent(req: AnalyzeRequest): Promise<AnalyzeResult
       wordCount: p.wordCount,
       headings: p.headings.slice(0, 12),
       utility: utilities[i],
+      queryRelevance: queryScores[i],
       selected: gist.selectedIds.includes(p.id),
       selectionOrder: gist.selectedIds.includes(p.id)
         ? gist.selectedIds.indexOf(p.id) + 1
@@ -230,6 +235,7 @@ export async function analyzeContent(req: AnalyzeRequest): Promise<AnalyzeResult
       wordCount: 0,
       headings: [],
       utility: 0,
+      queryRelevance: null,
       selected: false,
       selectionOrder: null,
       nearestSelectedId: null,
